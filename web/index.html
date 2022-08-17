@@ -188,7 +188,7 @@
         </div>
         
         <!-- Result -->
-        <div class="row p-2">
+        <div class="row p-2" v-show="isPredicted">
             <div class="col-12 p-2">
                 <div class="card">
                     <div class="card-body">
@@ -196,37 +196,37 @@
                         <hr>
                         <table>
                             <tr><td>Nilai Ambang Gelombang R</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.rValueThreshold}}</span></td></tr>
+                            <td>: {{predictResult.rValueThreshold}}</td></tr>
                             
                             <tr><td>Rata-Rata BPM</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.avgBpm}}</span></td></tr>
+                            <td>: {{predictResult.avgBpm}}</td></tr>
 
                             <tr><td>Frekuensi Data (Hz)</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.signalFreq}} Hz</span></td></tr>
+                            <td>: {{predictResult.signalFreq}} Hz</td></tr>
 
                             <tr><td>Durasi Data</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.dataDuration}} Detik</span></td></tr>
+                            <td>: {{predictResult.dataDuration}} Detik</td></tr>
 
                             <tr><td>Total Data</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.datasetLength}}</span></td></tr>
+                            <td>: {{predictResult.datasetLength}}</td></tr>
 
                             <tr><td>Interval Min RR (ms)</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.minRR}} ms</span></td></tr>
+                            <td>: {{predictResult.minRR}} ms</td></tr>
 
                             <tr><td>Interval Max RR (ms)</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.maxRR}} ms</span></td></tr>
+                            <td>: {{predictResult.maxRR}} ms</td></tr>
 
                             <tr><td>Perbandingan Interval Min dan Max RR (ms)</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.minMaxDiff}} ms</span></td></tr>
+                            <td>: {{predictResult.minMaxDiff}} ms</td></tr>
 
                             <tr><td>Standart Deviasi RR</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.rrMsStdDev}}</span></td></tr>
+                            <td>: {{predictResult.rrMsStdDev}}</td></tr>
 
                             <tr><td>Rata-Rata Interval RR (ms)</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.avgRrMs}} ms</span></td></tr>
+                            <td>: {{predictResult.avgRrMs}} ms</td></tr>
 
                             <tr><td>Perbandingan Interval RR Abnormal</td>
-                            <td>: <span v-if="isPredicted">{{predictResult.diff}}%</span></td></tr>
+                            <td>: {{predictResult.diff}}%</td></tr>
                         </table>
                         
                     </div>

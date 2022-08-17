@@ -29,15 +29,13 @@
 #include <LittleFS.h>
 #define DATALIMIT 30
 
-const char *ssid = "";           // Your SSID
-const char *password = "";       // Your Password
+const char *ssid = "Apartemen";           // Your SSID
+const char *password = "00000000";       // Your Password
 
 int interval = 10;                     // virtual delay
 unsigned long previousMillis = 0;       // Tracks the time since last event fired
 
-String pin_status = "";                 // Holds the status of the pin
 int scanIteration = 0;
-
 int dataSample[100];
 
 ESP8266WebServer server(80);                        // create instance for web server on port "80"
@@ -47,8 +45,7 @@ void setup()
 {
     Serial.begin(115200);               // Init Serial for Debugging.
     WiFi.begin(ssid, password);         // Connect to Wifi
-    while (WiFi.status() != WL_CONNECTED) 
-    {                                   // Check if wifi is connected or not
+    while (WiFi.status() != WL_CONNECTED) { // Check if wifi is connected or not
         delay(500);
         Serial.print(".");
     }
@@ -76,6 +73,7 @@ void loop()
     if ((unsigned long)(currentMillis - previousMillis) >= interval)
     {                                   // How much time has passed, accounting for rollover with subtraction!
         dataSample[scanIteration] = analogRead(A0); 
+        Serial.println(dataSample[scanIteration]);
         scanIteration++;
         if (scanIteration >= DATALIMIT) {
             update_webpage();               // Update Data    
@@ -88,45 +86,20 @@ void loop()
 // This function gets a call when a WebSocket event occurs
 void webSocketEvent(byte num, WStype_t type, uint8_t *payload, size_t length)
 {
-    switch (type)
-    {
-    case WStype_DISCONNECTED: // enum that read status this is used for debugging.
-        Serial.print("WS Type ");
-        Serial.print(type);
-        Serial.println(": DISCONNECTED");
-        break;
-    case WStype_CONNECTED: // Check if a WebSocket client is connected or not
-        Serial.print("WS Type ");
-        Serial.print(type);
-        Serial.println(": CONNECTED");
-        pin_status = "ON";
+    if (type == WStype_CONNECTED){
         update_webpage(); // update the webpage accordingly
-        break;
-    case WStype_TEXT:     // check responce from client
-        Serial.println(); // the payload variable stores teh status internally
-        Serial.println(payload[0]);
-        if (payload[0] == '1') {
-            pin_status = "ON";
-        } else if (payload[0] == '0') {
-            pin_status = "OFF";
-        }
-        break;
     }
 }
 void update_webpage()
 {
     String json;
-    json += "{\"PIN_Status\":\"";
-    json += pin_status;
-    json += ",\"dataSample\":[";
+    json += "{\"dataSample\":[";
     for (int i = 0; i < DATALIMIT; i++){
         json += String(dataSample[i]);
         if (i != DATALIMIT - 1) 
             json += ",";
     }
-
     json += "]}";
-    Serial.println(json);         // print the string for debugging.
     webSocket.broadcastTXT(json); // send the JSON object through the websocket
     json = "";                    // clear the String.
 }
