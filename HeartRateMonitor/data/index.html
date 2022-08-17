@@ -1,0 +1,241 @@
+<!-- 
+    Refrensi
+        -Base
+        https://iotdesignpro.com/projects/websocket-server-with-esp32-and-arduino-ide
+
+    Library
+        -Reconnecting Websocket
+        https://github.com/joewalnes/reconnecting-websocket
+ -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Websocket</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <meta charset='UTF-8'>
+    <style>
+        body { background-color: #f8f9fa; }
+        .btn { padding-left: 2rem !important; padding-right: 2rem !important; }
+    </style>
+	<link rel="stylesheet" href="bootstrap.min.css">
+    <script src="websocket.min.js"></script>
+    <script src="canvasjs.min.js"></script>
+    <script src="vue.min.js"></script>
+</head>
+
+<body>
+    <div class="container-fluid" id="app">
+        
+        <!-- Tab Stuff -->
+        <div class="row p-2">
+            <div class="col-12 p-2">
+                <div class="card">
+
+                    <!-- Tab Header -->
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link"
+                                    :class="{ active : activeTab === 'device' }"    
+                                    @click="activeTab = 'device'">
+                                    Hardware
+                                </a>
+                            <li class="nav-item">
+                                <a class="nav-link"
+                                    :class="{ active : activeTab === 'file' }"    
+                                    @click="activeTab = 'file'">
+                                    Input File
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content">
+
+                            <!-- Hardware Tab Content -->
+                            <div class="tab-pane fade"
+                                :class="activeTab === 'device' ? 'active show' : ''">
+                                
+                                <div class="row">
+                                    <div class="col-6">
+                                        
+                                        <span>Connection Status : 
+                                            <b v-if="connection_status == 'connected'" class="text-success">Connected</b>
+                                            <b v-else-if="connection_status == 'connecting'" class="text-warning">Connecting</b>
+                                            <b v-else class="text-danger">Disconnected</b>
+                                        </span><br>
+                                        <span>Banyak Data : {{dvc_dataset.length}}</span><br>
+                                        <span>Durasi Uji : {{(dvc_dataset.length*deviceConfig.msBetweenSignal)/1000}} Detik</span><br>
+                                        <div class="my-2" v-show="isRecordingData">
+                                            <div class="progress">
+                                                <div class="progress-bar" role="progressbar" :style="'width: '+recordProgress+'%;'">{{recordProgress}}%</div>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        
+                                        <button class="btn btn-primary" 
+                                            :disabled="isRecordingData || connection_status !== 'connected'"
+                                            @click="recordBtnPressed">Rekam Data</button>
+                                    </div>
+
+                                    <!-- Hardware Config -->
+                                    <div class="col-6">
+                                        
+                                        <div class="form-group">
+                                            <label for="dvcInputRValThr">Ambang nilai R</label>
+                                            <input type="text" v-model="dvc_rValueThreshold" id="dvcInputRValThr"
+                                            class="form-control form-control-sm mb-2" 
+                                            placeholder="Ambang nilai R">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="dvcRrDiffThr">Ambang nilai interval RR</label>
+                                            <input type="text" v-model="dvc_rrDiffThreshold" id="dvcRrDiffThr"
+                                            class="form-control form-control-sm mb-2" 
+                                            placeholder="Ambang nilai interval RR">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="recordLimit">Batas Durasi Data</label>
+                                            <input type="text" v-model="dvc_recordDurationLimit" id="recordLimit"
+                                            class="form-control form-control-sm mb-2" 
+                                            placeholder="Ambang nilai interval RR">
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Input File Tab Content -->
+                            <div class="tab-pane fade"
+                                :class="activeTab === 'file' ? 'active show' : ''">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label for="input_file">Input File Uji (*.csv)</label>    
+                                            <input type="file" @change="fileInputChanged" id="input_file"
+                                            class="form-control form-control-sm mb-2" ref="inputFile"
+                                            placeholder="First name">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="rrDiffThr">Kolom Data</label>
+                                            <select v-model="selectedColumn">
+                                                <option v-for="(e, i) in dataColumn"
+                                                    :value="i">{{e}}</option>
+                                            </select>
+                                        </div>
+        
+                                        <hr>
+                                        <button class="btn btn-success btn-sm" 
+                                            @click="selectDataPressed">Pilih</button>
+                                    </div>
+                                    
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label for="inputFreq">Frekuensi Data (Hz)</label>
+                                            <input type="text" v-model="signalFreq" id="inputFreq"
+                                            class="form-control form-control-sm mb-2" 
+                                            placeholder="Frekuensi data (Hz)">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="inputRValThr">Ambang nilai R</label>
+                                            <input type="text" v-model="rValueThreshold" id="inputRValThr"
+                                            class="form-control form-control-sm mb-2" 
+                                            placeholder="Ambang nilai R">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="rrDiffThr">Ambang nilai interval RR</label>
+                                            <input type="text" v-model="rrDiffThreshold" id="rrDiffThr"
+                                            class="form-control form-control-sm mb-2" 
+                                            placeholder="Ambang nilai interval RR">
+                                        </div>
+                                        
+                                    </div>
+                                </div>
+                               
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Footer Buttons -->
+                    <div class="card-footer">
+                        <div class="btn btn-primary"
+                            @click="proceedBtnPressed">Proses</div>
+                        <div class="btn btn-warning"
+                            @click="resetBtnPressed">Reset</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Graph -->
+        <div class="row p-2">
+            <div class="col-12 p-2">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="card-title mb-0">Grafik Electrocardiograf</div>
+                        <span class="text-secondary">{{graphSource}}</span>
+                        <hr>
+                        <div id="chart" style="height: 300px; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Result -->
+        <div class="row p-2">
+            <div class="col-12 p-2">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="card-title">Hasil</div>
+                        <hr>
+                        <table>
+                            <tr><td>Nilai Ambang Gelombang R</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.rValueThreshold}}</span></td></tr>
+                            
+                            <tr><td>Rata-Rata BPM</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.avgBpm}}</span></td></tr>
+
+                            <tr><td>Frekuensi Data (Hz)</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.signalFreq}} Hz</span></td></tr>
+
+                            <tr><td>Durasi Data</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.dataDuration}} Detik</span></td></tr>
+
+                            <tr><td>Total Data</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.datasetLength}}</span></td></tr>
+
+                            <tr><td>Interval Min RR (ms)</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.minRR}} ms</span></td></tr>
+
+                            <tr><td>Interval Max RR (ms)</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.maxRR}} ms</span></td></tr>
+
+                            <tr><td>Perbandingan Interval Min dan Max RR (ms)</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.minMaxDiff}} ms</span></td></tr>
+
+                            <tr><td>Standart Deviasi RR</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.rrMsStdDev}}</span></td></tr>
+
+                            <tr><td>Rata-Rata Interval RR (ms)</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.avgRrMs}} ms</span></td></tr>
+
+                            <tr><td>Perbandingan Interval RR Abnormal</td>
+                            <td>: <span v-if="isPredicted">{{predictResult.diff}}%</span></td></tr>
+                        </table>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+	</div>
+
+    <script src="script.min.js"></script>
+ 
+</body>
+</html>
