@@ -114,20 +114,9 @@ var app = new Vue({
         },
         proceedBtnPressed(){
             this.resetResult()
-            if (this.checkInputField()){
-                console.log('wrong input')
-                alert('wrong input')
-                return
-            }
-
-            let result 
-            if (this.activeTab === 'file'){
-                if (this.fileDataset.length < 1) return 
-                result = this.getResult(this.fileDataset, this.fileConfig)
-            } else {
-                if (this.dvc_dataset.length < 1) return 
-                result = this.getResult(this.dvc_dataset, this.deviceConfig)
-            } 
+            if (this.getDataset?.length < 1) 
+                return 
+            const result = this.getResult(this.getDataset, this.getConfig)
             
             this.avgBpm = result.avgBpm
             this.diff = result.diff
@@ -167,25 +156,12 @@ var app = new Vue({
             this.dataLength = this.deviceConfig.datasetLimit
             console.log('recording start')
         },
+
+        // Other
         doneRecording(){
             this.isRecordingData = false
             this.graphSource = 'Hardware'
             console.log('recording end')
-        },
-        checkInputField(){
-            const dvc = this.deviceConfig
-            const file = this.fileConfig
-            if (this.activeTab === 'file')
-                return (
-                    isNaN(file.signalFreq) || 
-                    isNaN(file.rValueThreshold) || 
-                    isNaN(file.rrDiffThreshold)
-                )
-            return (
-                isNaN(dvc.signalFreq) || 
-                isNaN(dvc.rValueThreshold) || 
-                isNaN(dvc.rrDiffThreshold)
-            )
         },
 
 
@@ -390,38 +366,40 @@ var app = new Vue({
     computed: {
         // Computed condfigs
         fileConfig(){
-            const rValThr = parseInt(this.rValueThreshold)
-            const rrDiffThr = parseInt(this.rrDiffThreshold)
-            const freq = parseInt(this.signalFreq)
             return {
-                rValueThreshold: rValThr,
-                rrDiffThreshold: rrDiffThr,
-                samplingDiff:    Math.ceil((freq*10)/100),
-                signalFreq:      freq,
-                msBetweenSignal: 1000 / freq,
-                datasetLength: this.fileDataset.length
+                rValueThreshold: this.rValueThreshold,
+                rrDiffThreshold: this.rrDiffThreshold,
+                samplingDiff:    Math.ceil((this.signalFreq*10)/100),
+                signalFreq:      this.signalFreq,
+                msBetweenSignal: 1000 / this.signalFreq,
+                datasetLength:   this.fileDataset.length
             }
         },
         deviceConfig(){
-            const freq = parseInt(this.dvc_signalFreq)
-            const rValThr = parseInt(this.dvc_rValueThreshold)
-            const rrDiffThr = parseInt(this.dvc_rrDiffThreshold)
-            const durLimit = parseInt(this.dvc_recordDurationLimit)
             return {
-                rValueThreshold: rValThr,
-                rrDiffThreshold: rrDiffThr,
-                samplingDiff:    Math.ceil((freq*10)/100),
-                signalFreq:      freq,
-                msBetweenSignal: 1000 / freq,
-                datasetLimit:    durLimit * freq,
+                rValueThreshold: this.dvc_rValueThreshold,
+                rrDiffThreshold: this.dvc_rrDiffThreshold,
+                samplingDiff:    Math.ceil((this.dvc_signalFreq * 10) / 100),
+                signalFreq:      this.dvc_signalFreq,
+                msBetweenSignal: 1000 / this.dvc_signalFreq,
+                datasetLimit:    this.dvc_recordDurationLimit * this.dvc_signalFreq,
                 datasetLength: this.dvc_dataset.length
             }
+        },
+        getConfig(){
+            return this.activeTab === 'file' ? 
+                this.fileConfig : 
+                this.deviceConfig
+        },
+        getDataset(){
+            return (this.activeTab === 'file') ? 
+                this.fileDataset : 
+                this.dvc_dataset
         },
 
         // Computed prediction result
         predictResult(){
-            const cfg = this.activeTab === 'file' ? 
-                this.fileConfig : this.deviceConfig
+            const cfg = this.getConfig
             return {
                 rValueThreshold: cfg.rValueThreshold,
                 avgBpm: this.avgBpm,
