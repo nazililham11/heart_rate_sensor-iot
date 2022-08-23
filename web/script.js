@@ -36,10 +36,11 @@ var app = new Vue({
             
             // result stuff
             avgBpm: 0,
-            diff: 0,
+            pnn50: 0,
             minRR: 0,
             maxRR: 0,
             avgRrMs: 0,
+            stdDev: 0,
             isPredicted: false,
             
             // websocket stuff
@@ -119,11 +120,11 @@ var app = new Vue({
             const result = this.getResult(this.getDataset, this.getConfig)
             
             this.avgBpm = result.avgBpm
-            this.diff = result.diff
+            this.pnn50 = result.pnn50
             this.minRR = result.minRR
             this.maxRR = result.maxRR
             this.avgRrMs = result.avgRrMs
-            this.rrMsStdDev = result.rrMsStdDev
+            this.stdDev = result.stdDev
             this.isPredicted = true
 
             console.log('result', result)
@@ -167,6 +168,11 @@ var app = new Vue({
 
         // Predict methods
         getResult(input, cfg){
+            const rValueThreshold = cfg.rValueThreshold
+            const samplingDiff = cfg.samplingDiff
+            const msBetweenSignal = cfg.msBetweenSignal
+            const rrDiffThreshold = cfg.rrDiffThreshold
+
             // helpers
             const subSampleData = (index, dataset, samplingDiff) => {
                 const dataLength = dataset.length
@@ -183,80 +189,72 @@ var app = new Vue({
                 const index = array.indexOf(maxValue)
                 return { maxValue, index }
             }
-            const roundNumber = (n) => {
+            const round = (n) => {
                 return Math.round((n + Number.EPSILON) * 100) / 100
             }
             
             // get R index
-            const rIndexes = []
+            const peakR = []
             for (let i = 0; i < input.length; i++) {
-                if (input[i] > cfg.rValueThreshold){
-                    const sampleData = subSampleData(i, input, cfg.samplingDiff)
+                if (input[i] > rValueThreshold){
+                    const sampleData = subSampleData(i, input, samplingDiff)
                     const maxValue = getMaxValue(sampleData.result)
                     const rIndex = maxValue.index + sampleData.startIndex
-                    rIndexes.push(rIndex)
+                    peakR.push(rIndex)
                     i = sampleData.endIndex
                 }
             }
             // get rr index diff
-            const rIndexesDiff = []
-            for (let i = 1; i < rIndexes.length; i++) {
-                rIndexesDiff.push(Math.abs(
-                    rIndexes[i] - rIndexes[i-1]
-                ))
+            const intervR = []
+            for (let i = 1; i < peakR.length; i++) {
+                intervR.push(Math.abs(peakR[i] - peakR[i-1]))
             }
 
             // convert to ms
-            const rrMs = []
-            rIndexesDiff.forEach(v => rrMs.push(roundNumber(v * cfg.msBetweenSignal)))
+            const rrMs = intervR.map(v => round(v * msBetweenSignal))
             
             // average RR ms
-            let avgRrMs = 0
-            rrMs.forEach(v => avgRrMs = avgRrMs + v)
-            avgRrMs = roundNumber(avgRrMs / rrMs.length)
+            const sumRrMs = rrMs.reduce((sum, value) => sum + value)
+            const avgRrMs = round(sumRrMs / rrMs.length)
 
             // Min & Max RR ms
             const minRR = Math.min.apply(null, rrMs)
             const maxRR = Math.max.apply(null, rrMs)
 
             // Standard Dev
-            const rrMsStdDev = roundNumber(
-                this.getStandardDeviation(rrMs))
+            const stdDev = round(this.getStandardDeviation(rrMs))
 
             // bpm
-            const bpm = []
-            let sumBpm = 0
-            rrMs.forEach(v => bpm.push(roundNumber(60000 / v)))
-            bpm.forEach(v => sumBpm = sumBpm + v)
-            const avgBpm = roundNumber(sumBpm / bpm.length)
+            const bpm = rrMs.map(v => round(60000 / v))
+            const sumBpm = bpm.reduce((sum, value) => sum + value)
+            const avgBpm = round(sumBpm / bpm.length)
 
             // get rr diff
             const rrDiff = []
             if (rrMs.length > 1){
                 for (let i = 1; i < rrMs.length; i++) {
-                    rrDiff.push(roundNumber(
-                        Math.abs(rrMs[i] - rrMs[i-1]))
+                    rrDiff.push(round(Math.abs(rrMs[i] - rrMs[i-1]))
                     )
                 }
             }
             // filtering rr diff
-            const filteredRRDiff = rrDiff.filter(v => v > cfg.rrDiffThreshold)
-            // diff 
-            const diff = roundNumber(filteredRRDiff.length / rrMs.length) * 100
+            const temp = rrDiff.filter(v => v > rrDiffThreshold)
+            const nn50 = temp.length
+            // pnn50 
+            const pnn50 = round(nn50 / rrMs.length) * 100
 
             return {
-                rIndexes, 
+                peakR, 
                 rrMs, rrDiff,  
-                filteredRRDiff, diff,
+                temp, pnn50,
                 bpm, avgBpm, avgRrMs,
-                minRR, maxRR, rrMsStdDev,
+                minRR, maxRR, stdDev,
                 cfg
             }
-
         },
         resetResult(){
             this.avgBpm = 0
-            this.diff = 0
+            this.pnn50 = 0
             this.minRR = 0
             this.maxRR = 0
             this.avgRrMs = 0
@@ -410,8 +408,8 @@ var app = new Vue({
                 maxRR: this.maxRR, 
                 minMaxDiff: Math.abs(this.maxRR - this.minRR), 
                 avgRrMs: this.avgRrMs,
-                rrMsStdDev: this.rrMsStdDev,
-                diff: this.diff,
+                stdDev: this.stdDev,
+                pnn50: this.pnn50,
             }
         },
 
