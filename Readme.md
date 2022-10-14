@@ -1,3 +1,7 @@
+# Heart Rate Sensor
+Alat yang mendeteksi detak jantung dan dapat mengidentifikasi apakah detak jantung mengalami ganguan Atrial Fibrilasi, Hasil identifikasi dapat dilihat dari antarmuka WEB. Alat dibuat dengan ESP8266 dan mendeteksi detak jantung dengan sensor ECG kemudian mengirim data pada web client.
+Web Client dibuat dengan VueJS dan berkomunikasi dengan protokol WebSocket.
+
 # Arduino
 ## Komponen
  - NodeMCU ESP8266
